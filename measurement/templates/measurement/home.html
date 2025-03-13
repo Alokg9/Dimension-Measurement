@@ -1,0 +1,515 @@
+<!-- measurement/templates/measurement/home.html -->
+{% extends 'measurement/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto text-center">
+            <h1 class="display-4 text-gradient mb-4">AI-Powered 3D Measurement</h1>
+            <p class="lead text-light-50">Upload an image and let our advanced AI system analyze and measure objects with precision.</p>
+        </div>
+    </div>
+
+    <!-- Measurement Guidelines -->
+    <div class="measurement-guidelines glass-card mb-4">
+        <h3 class="gradient-text"><i class="fas fa-camera-retro"></i> Photo Guidelines</h3>
+        <div class="guidelines-grid">
+            <div class="guideline-item">
+                <i class="fas fa-ruler"></i>
+                <h4>Proper Distance</h4>
+                <p>Keep 30-50cm distance from object for best accuracy</p>
+            </div>
+            <div class="guideline-item">
+                <i class="fas fa-lightbulb"></i>
+                <h4>Good Lighting</h4>
+                <p>Ensure area is well-lit with minimal shadows</p>
+            </div>
+            <div class="guideline-item">
+                <i class="fas fa-align-center"></i>
+                <h4>Center Alignment</h4>
+                <p>Align object with the center crosshair</p>
+            </div>
+            <div class="guideline-item">
+                <i class="fas fa-expand"></i>
+                <h4>Fill the Frame</h4>
+                <p>Object should occupy 60-80% of the frame</p>
+            </div>
+            <div class="guideline-item">
+                <i class="fas fa-angle-double-right"></i>
+                <h4>Straight Angle</h4>
+                <p>Camera should be parallel to object surface</p>
+            </div>
+            <div class="guideline-item">
+                <i class="fas fa-object-ungroup"></i>
+                <h4>Clear Background</h4>
+                <p>Keep background clean and contrasting</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Car Model Container -->
+    <div class="car-model-container mb-5">
+        <canvas id="carCanvas"></canvas>
+    </div>
+
+    <!-- Service Cards -->
+    <div class="row g-4 mb-5 service-cards">
+        <div class="col-md-4">
+            <div class="service-card h-100" data-service="engineCheck">
+                <div class="card-body">
+                    <div class="service-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="card-title text-gradient">Engine Diagnostics</h3>
+                    <p class="card-text">Advanced AI analysis for engine performance and health.</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="service-card h-100" data-service="wheelService">
+                <div class="card-body">
+                    <div class="service-icon">
+                        <i class="fas fa-dharmachakra"></i>
+                    </div>
+                    <h3 class="card-title text-gradient">Wheel Service</h3>
+                    <p class="card-text">Precision wheel alignment and balancing services.</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="service-card h-100" data-service="paintJob">
+                <div class="card-body">
+                    <div class="service-icon">
+                        <i class="fas fa-spray-can"></i>
+                    </div>
+                    <h3 class="card-title text-gradient">Paint Services</h3>
+                    <p class="card-text">Professional auto painting and finishing.</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Container -->
+    <div class="video-container glass-card">
+        <div class="video-overlay">
+            <!-- Corner Guides -->
+            <div class="corner-guide top-left"></div>
+            <div class="corner-guide top-right"></div>
+            <div class="corner-guide bottom-left"></div>
+            <div class="corner-guide bottom-right"></div>
+            
+            <!-- Center Target -->
+            <div class="center-target">
+                <div class="target-ring"></div>
+                <div class="target-crosshair"></div>
+            </div>
+            
+            <!-- Distance Guide -->
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                }
+                .distance-guide {
+                    display: flex;
+                    justify-content: space-around;
+                    padding: 20px;
+                    font-size: 20px;
+                    font-weight: bold;
+                    transition: opacity 0.3s ease-in-out;
+                }
+                .distance-marker {
+                    padding: 15px;
+                    border-radius: 8px;
+                    color: white;
+                    min-width: 120px;
+                    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+                }
+                .too-close { background-color: red; }
+                .optimal { background-color: green; }
+                .too-far { background-color: blue; }
+                .hidden { opacity: 0.2; transform: scale(0.9); }
+                #distance-value {
+                    font-size: 24px;
+                    margin: 15px 0;
+                    font-weight: bold;
+                    color: #333;
+                }
+                input[type="range"] {
+                    width: 80%;
+                    cursor: pointer;
+                }
+            </style>
+        </head>
+        <body>
+{% comment %}         
+            <h2>Distance Guide</h2>
+            <p>Adjust the slider to see the zone change dynamically.</p>
+        
+            <div id="distance-value">Distance: 50</div>
+         {% endcomment %}
+            <div class="distance-guide">
+                <div class="distance-marker too-close hidden" id="tooClose">Too Close</div>
+                <div class="distance-marker optimal hidden" id="optimal">Optimal Zone</div>
+                <div class="distance-marker too-far hidden" id="tooFar">Too Far</div>
+            </div>
+        
+            <input type="range" id="distance-slider" min="0" max="100" value="50">
+        
+            <script>
+                const slider = document.getElementById("distance-slider");
+                const distanceValue = document.getElementById("distance-value");
+                const tooClose = document.getElementById("tooClose");
+                const optimal = document.getElementById("optimal");
+                const tooFar = document.getElementById("tooFar");
+        
+                function updateDistanceZone(value) {
+                    // Update displayed distance
+                    distanceValue.innerText = "Distance: " + value;
+        
+                    // Reset visibility
+                    tooClose.classList.add("hidden");
+                    optimal.classList.add("hidden");
+                    tooFar.classList.add("hidden");
+        
+                    // Show correct zone
+                    if (value < 30) {
+                        tooClose.classList.remove("hidden");
+                    } else if (value >= 30 && value <= 70) {
+                        optimal.classList.remove("hidden");
+                    } else {
+                        tooFar.classList.remove("hidden");
+                    }
+                }
+        
+                // Listen for real-time changes
+                slider.addEventListener("input", function () {
+                    updateDistanceZone(this.value);
+                });
+        
+                // Initialize with default slider value
+                updateDistanceZone(slider.value);
+            </script>
+        
+        </div>
+        
+        <video id="video" autoplay playsinline></video>
+        
+        
+    </div>
+    <!-- Controls -->
+    <div class="camera-controls glass-panel">
+        <button id="captureBtn" class="btn btn-primary btn-lg">
+            <i class="fas fa-camera"></i>
+            Capture
+        </button>
+        <button id="refresh" class="btn btn-primary btn-lg">
+            Refresh
+        </button>
+        <button id="uploadBtn" class="btn btn-outline-primary btn-lg">
+            <i class="fas fa-upload"></i>
+            Upload
+        </button>
+        <div class="confidence-slider">
+            <label for="confidenceSlider">AI Confidence Threshold</label>
+            <input type="range" id="confidenceSlider" min="0" max="100" value="50">
+            <div class="confidence-value">50%</div>
+        </div>
+    </div>
+</div>
+
+    <!-- Results Panel -->
+    <div id="results" class="results-panel glass-card mt-4 d-none">
+        <h4 class="text-gradient mb-4">Measurement Results</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+            <div class="col-md-6">
+                <div class="measurement-details">
+                    <div class="detail-item">
+                        <span class="label">Height:</span>
+                        <span class="value" id="widthValue">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="label">Width:</span>
+                        <span class="value" id="heightValue">--</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="label">Confidence:</span>
+                        <span class="value" id="confidenceValue">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .measurement-guidelines {
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-radius: 15px;
+    }
+
+    .guidelines-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .guideline-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .guideline-item:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .guideline-item i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: var(--primary-color);
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .guideline-item h4 {
+        color: var(--text-color);
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+    }
+
+    .guideline-item p {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+        .guidelines-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+    }
+
+    .video-container {
+        position: relative;
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .video-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    /* Corner Guides */
+    .corner-guide {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--primary-color);
+        opacity: 0.8;
+        transition: all 0.3s ease;
+    }
+
+    .corner-guide.active {
+        border-color: var(--success-color);
+    }
+
+    .top-left {
+        top: 20px;
+        left: 20px;
+        border-right: none;
+        border-bottom: none;
+    }
+
+    .top-right {
+        top: 20px;
+        right: 20px;
+        border-left: none;
+        border-bottom: none;
+    }
+
+    .bottom-left {
+        bottom: 20px;
+        left: 20px;
+        border-right: none;
+        border-top: none;
+    }
+
+    .bottom-right {
+        bottom: 20px;
+        right: 20px;
+        border-left: none;
+        border-top: none;
+    }
+
+    /* Center Target */
+    .center-target {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .target-ring {
+        width: 100px;
+        height: 100px;
+        border: 2px solid var(--primary-color);
+        border-radius: 50%;
+        opacity: 0.6;
+        animation: pulse 2s infinite;
+    }
+
+    .target-crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+    }
+
+    .target-crosshair::before,
+    .target-crosshair::after {
+        content: '';
+        position: absolute;
+        background: var(--primary-color);
+    }
+
+    .target-crosshair::before {
+        width: 2px;
+        height: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .target-crosshair::after {
+        width: 100%;
+        height: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* Distance Guide */
+    .distance-guide {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 10px;
+        border-radius: 10px;
+        backdrop-filter: blur(5px);
+    }
+
+    .distance-marker {
+        font-size: 0.8rem;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        opacity: 0.6;
+        transition: opacity 0.3s ease;
+    }
+
+    .distance-marker.active {
+        opacity: 1;
+        background: var(--primary-color);
+    }
+
+    /* Camera Controls */
+    .camera-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(10px);
+    }
+
+    .confidence-slider {
+        flex: 1;
+        max-width: 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .confidence-slider label {
+        color: white;
+        font-size: 0.9rem;
+    }
+
+    .confidence-slider input {
+        width: 100%;
+    }
+
+    .confidence-value {
+        color: var(--primary-color);
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 0.6;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.4;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 0.6;
+        }
+    }
+
+    /* Video Element */
+    video {
+        width: 100%;
+        max-height: 720px;
+        object-fit: cover;
+    }
+</style>
+
+<!-- Initialize Car and Service Animations -->
+<script src="{% static 'js/car-animations.js' %}"></script>
+<script src="{% static 'js/service-animations.js' %}"></script>
+{% endblock %}

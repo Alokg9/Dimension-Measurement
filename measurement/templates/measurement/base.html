@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeasureStudio - AI-Powered 3D Measurement Solution</title>
+    
+    <!-- Dependencies -->
+     
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Animation Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom Styles -->
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    
+    <!-- Initialize Animation Loader -->
+    <script src="{% static 'js/animation-loader.js' %}"></script>
+    
+    <!-- Initialize Capture Handler -->
+    <script src="{% static 'js/capture-handler.js' %}"></script>
+    
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-color-rgb: 99, 102, 241;
+            --secondary-color: #0ea5e9;
+            --secondary-color-rgb: 14, 165, 233;
+            --background-dark: #0f172a;
+            --success-color: #00ff99;
+            --success-color-rgb: 0, 255, 153;
+            --warning-color: #ffd700;
+            --warning-color-rgb: 255, 215, 0;
+            --error-color: #ff4444;
+            --error-color-rgb: 255, 68, 68;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--background-dark);
+            color: white;
+            overflow-x: hidden;
+            perspective: 1000px;
+        }
+
+        /* 3D Background Canvas */
+        #three-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+
+        /* AI Status Indicator */
+        .ai-status-global {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+            transform: translateY(-100%);
+            animation: slideDown 0.5s ease forwards;
+        }
+
+        .ai-status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--success-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px rgba(var(--success-color-rgb), 0.5);
+        }
+
+        /* Neural Network Background */
+        .neural-network {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards;
+        }
+
+        .neural-node {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: nodeFloat 10s infinite ease-in-out;
+            box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5);
+        }
+
+        .neural-connection {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                rgba(var(--primary-color-rgb), 0.5), 
+                transparent);
+            transform-origin: left;
+            animation: connectionPulse 4s infinite ease-in-out;
+        }
+
+        /* Enhanced Animations */
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 0.8; }
+        }
+
+        @keyframes nodeFloat {
+            0%, 100% { 
+                transform: translate(0, 0);
+                box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.5);
+            }
+            50% { 
+                transform: translate(10px, 10px);
+                box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.8);
+            }
+        }
+
+        @keyframes connectionPulse {
+            0%, 100% { 
+                opacity: 0.2;
+                transform: scaleX(0.95);
+            }
+            50% { 
+                opacity: 0.8;
+                transform: scaleX(1.05);
+            }
+        }
+
+        @keyframes pulse {
+            0% { 
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 10px rgba(var(--success-color-rgb), 0.5);
+            }
+            50% { 
+                transform: scale(1.2);
+                opacity: 0.5;
+                box-shadow: 0 0 20px rgba(var(--success-color-rgb), 0.8);
+            }
+            100% { 
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 10px rgba(var(--success-color-rgb), 0.5);
+            }
+        }
+
+        /* 3D Content Wrapper */
+        .content-wrapper {
+            position: relative;
+            transform-style: preserve-3d;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        /* 3D Floating Elements */
+        .floating-cube {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform-style: preserve-3d;
+            animation: floatCube 20s infinite linear;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 3D Navigation */
+        .nav-3d {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            transform-style: preserve-3d;
+            z-index: 1000;
+        }
+
+        .nav-item-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-item-3d:hover {
+            transform: translateZ(50px) rotateX(10deg) rotateY(10deg);
+        }
+
+        /* Animations */
+        @keyframes floatCube {
+            0% {
+                transform: translateZ(-50px) rotateX(0deg) rotateY(0deg);
+            }
+            100% {
+                transform: translateZ(50px) rotateX(360deg) rotateY(360deg);
+            }
+        }
+
+        /* Mouse Move Effect Container */
+        .mouse-move-container {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.2s ease;
+        }
+
+        /* Modern Card Styles */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        .card-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Progress Bars */
+        .progress {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+
+
+
+
+<body class="bg-dark" >
+    <!-- AI Status Indicator -->
+
+
+    <nav class="navbar navbar-expand-lg navbar-glass">
+        <div class="container-fluid">
+            <!-- 3D Animated Logo -->
+            <div class="logo-3d">
+                <span class="text-3d" data-text="MeasureStudio" style="font-size: 35px">MeasureStudio</span>
+            </div>
+    
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+    
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link hover-effect" href="#">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link hover-effect" href="#">
+                            <i class="fas fa-robot"></i> AI Stats
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link hover-effect" href="#">
+                            <i class="fas fa-history"></i> History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link hover-effect" href="#">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="ai-status-global">
+        <div class="ai-status-dot"></div>
+        <span>AI Model Active</span>
+    </div>
+    
+    <!-- Three.js Background Canvas -->
+    <canvas id="three-background"></canvas>
+
+    <!-- Neural Network Background -->
+    <div class="neural-network-bg"></div>
+
+    <!-- 3D Content Wrapper -->
+    <div class="content-wrapper mouse-move-container">
+        <!-- Dynamic 3D Elements -->
+        <div id="floating-elements"></div>
+        
+        <!-- Main Content -->
+        <div class="content-3d">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Animate particles
+            particles.children.forEach(particle => {
+                particle.position.add(particle.userData.velocity);
+
+                if (Math.abs(particle.position.x) > 5) particle.userData.velocity.x *= -1;
+                if (Math.abs(particle.position.y) > 5) particle.userData.velocity.y *= -1;
+                if (Math.abs(particle.position.z) > 5) particle.userData.velocity.z *= -1;
+            });
+
+            particles.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        function handleResize() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createFloatingElements();
+            createNeuralNetwork();
+            animate();
+
+            // Event listeners
+            window.addEventListener('resize', handleResize);
+            document.addEventListener('mousemove', handleMouseMove);
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Neural Network Background Animation
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.querySelector('.neural-network-bg');
+            container.appendChild(canvas);
+
+            // Set canvas size
+            const resizeCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            };
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Node class for neural network
+            class Node {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.connections = [];
+                    this.size = Math.random() * 2 + 2;
+                    this.speed = Math.random() * 0.5 + 0.2;
+                    this.angle = Math.random() * Math.PI * 2;
+                }
+
+                update() {
+                    this.angle += this.speed * 0.02;
+                    this.x += Math.cos(this.angle) * this.speed;
+                    this.y += Math.sin(this.angle) * this.speed;
+
+                    if (this.x < 0) this.x = canvas.width;
+                    if (this.x > canvas.width) this.x = 0;
+                    if (this.y < 0) this.y = canvas.height;
+                    if (this.y > canvas.height) this.y = 0;
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+                    ctx.fill();
+                }
+            }
+
+            // Create nodes
+            const nodes = [];
+            const numNodes = 50;
+            for (let i = 0; i < numNodes; i++) {
+                nodes.push(new Node(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height
+                ));
+            }
+
+            // Animation loop
+            function animate() {
+                ctx.fillStyle = 'rgba(26, 26, 26, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Update and draw nodes
+                nodes.forEach(node => {
+                    node.update();
+                    node.draw();
+                });
+
+                // Draw connections
+                ctx.strokeStyle = 'rgba(139, 92, 246, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dx = nodes[i].x - nodes[j].x;
+                        const dy = nodes[i].y - nodes[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < 150) {
+                            ctx.beginPath();
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        });
+        <!-- Initialize Capture Handler -->
+
+    </script>
+    
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

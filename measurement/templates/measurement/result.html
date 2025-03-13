@@ -1,0 +1,365 @@
+{% extends 'measurement/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-1000">
+            <!-- AI Status Indicator -->
+            <div class="ai-status mb-4">
+                <div class="ai-status-dot"></div>
+                <span>AI Analysis Complete</span>
+            </div>
+
+            <!-- Main Result Card -->
+            <div class="result-card glass-card">
+                <div class="card-header-gradient">
+                    <h2 class="text-gradient mb-0">Measurement Results</h2>
+                </div>
+                
+                {% if measurement %}
+                    <!-- Image and Grid Section -->
+                    <div class="result-section">
+                        <div class="result-image-container">
+                            <img src="{{ measurement.image.url }}" 
+                                 alt="Measured Image" 
+                                 class="result-image">
+                            <div class="dimension-grid"></div>
+                            <div class="measurement-overlay">
+                                <div class="measurement-line horizontal"></div>
+                                <div class="measurement-line vertical"></div>
+                                <div class="measurement-point top-left"></div>
+                                <div class="measurement-point top-right"></div>
+                                <div class="measurement-point bottom-left"></div>
+                                <div class="measurement-point bottom-right"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Measurement Cards -->
+                    <div class="measurement-cards">
+                        <div class="measurement-card width-card">
+                            <div class="card-content">
+                                <div class="measurement-icon">
+                                    <i class="fas fa-arrows-alt-h"></i>
+                                </div>
+                                <h3>Width</h3>
+                                <p class="measurement-value">{{ measurement.width|floatformat:2 }}<span>cm</span></p>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+
+                        <div class="measurement-card height-card">
+                            <div class="card-content">
+                                <div class="measurement-icon">
+                                    <i class="fas fa-arrows-alt-v"></i>
+                                </div>
+                                <h3>Height</h3>
+                                <p class="measurement-value">{{ measurement.height|floatformat:2 }}<span>cm</span></p>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+
+                        <div class="measurement-card area-card">
+                            <div class="card-content">
+                                <div class="measurement-icon">
+                                    <i class="fas fa-vector-square"></i>
+                                </div>
+                                <h3>Area</h3>
+                                <p class="measurement-value">{{ measurement.width|multiply:measurement.height|floatformat:2 }}<span>cm²</span></p>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Section -->
+                    <div class="analysis-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="accuracy-chart-container glass-card">
+                                    <h4 class="text-gradient">Measurement Accuracy</h4>
+                                    <canvas id="accuracyChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="details-card glass-card">
+                                    <h4 class="text-gradient">Analysis Details</h4>
+                                    <ul class="analysis-details">
+                                        <li>
+                                            <i class="fas fa-calendar"></i>
+                                            <span>Measured on: {{ measurement.uploaded_at|date:"F j, Y, g:i a" }}</span>
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>AI Confidence: High</span>
+                                        </li>
+                                        <li>
+                                            <i class="fas fa-ruler-combined"></i>
+                                            <span>Scale: Calibrated</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                {% else %}
+                    <div class="alert alert-glass">
+                        <i class="fas fa-exclamation-circle"></i>
+                        No measurement data available.
+                    </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <a href="{% url 'measurement:home' %}" class="btn btn-primary btn-lg btn-glow">
+                        <i class="fas fa-camera"></i>
+                        Measure Another Object
+                    </a>
+                    {% if measurement %}
+                        <button class="btn btn-outline-light btn-lg" onclick="window.print()">
+                            <i class="fas fa-print"></i>
+                            Print Results
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Glass Card Styles */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Card Header Gradient */
+    .card-header-gradient {
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        padding: 1.5rem;
+        border-radius: 15px 15px 0 0;
+        margin: -2rem -2rem 2rem -2rem;
+    }
+
+    /* Text Gradient */
+    .text-gradient {
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: bold;
+    }
+
+    /* AI Status */
+    .ai-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        width: fit-content;
+        margin-bottom: 2rem;
+    }
+
+    .ai-status-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--success-color);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    /* Result Image Styles */
+    .result-image-container {
+        position: relative;
+        margin-bottom: 2rem;
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .result-image {
+        width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 15px;
+    }
+
+    /* Measurement Grid */
+    .dimension-grid {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: grid;
+        pointer-events: none;
+    }
+
+    .grid-cell {
+        border: 1px solid rgba(var(--primary-color-rgb), 0.1);
+    }
+
+    /* Measurement Cards */
+    .measurement-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .measurement-card {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .measurement-icon {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .measurement-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .measurement-value span {
+        font-size: 1rem;
+        opacity: 0.7;
+        margin-left: 0.5rem;
+    }
+
+    /* Progress Bars */
+    .progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-fill {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        transition: width 1s ease;
+    }
+
+    /* Analysis Section */
+    .accuracy-chart-container {
+        height: 300px;
+    }
+
+    .analysis-details {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .analysis-details li {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+    }
+
+    .analysis-details i {
+        color: var(--primary-color);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn-glow {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-glow::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+        transform: scale(0);
+        transition: transform 0.5s;
+    }
+
+    .btn-glow:hover::before {
+        transform: scale(1);
+    }
+
+    /* Measurement Particles */
+    .measurement-particle {
+        position: fixed;
+        width: 6px;
+        height: 6px;
+        background: var(--primary-color);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1000;
+    }
+
+    /* Print Styles */
+    @media print {
+        .btn, .ai-status {
+            display: none !important;
+        }
+        
+        .glass-card {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .card-header-gradient {
+            background: none !important;
+            color: black !important;
+        }
+        
+        .text-gradient {
+            background: none !important;
+            -webkit-text-fill-color: black !important;
+        }
+        
+        .measurement-card {
+            border: 1px solid #ddd !important;
+            background: none !important;
+        }
+        
+        .measurement-value, .measurement-icon {
+            color: black !important;
+        }
+    }
+</style>
+
+<!-- Initialize Result Animations -->
+<script src="{% static 'js/result-animations.js' %}"></script>
+{% endblock %}
